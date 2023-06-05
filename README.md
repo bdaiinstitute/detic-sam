@@ -2,6 +2,9 @@
 
 This repo uses [Detic](https://github.com/facebookresearch/Detic) to detect objects based on a text description of each class (i.e. open-vocabulary detection). It then conditions the [Segment Anything](https://github.com/facebookresearch/segment-anything) model with the detected bounding boxes to get segmentation masks.
 
+![example segmentation kitchen](examples/1_segm.png)
+![example segmentation tools](examples/2_segm.png)
+
 ## Setup
 
 Either run `./setup.sh` or follow the steps manually.
