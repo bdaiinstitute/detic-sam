@@ -158,7 +158,7 @@ def visualize_output(im, masks, input_boxes, classes, image_save_path):
     for mask in masks:
         show_mask(mask.cpu().numpy(), plt.gca(), random_color=True)
     for box, class_name in zip(input_boxes, classes):
-        show_box(box.cpu(), plt.gca())
+        show_box(box, plt.gca())
         x, y = box[:2]
         plt.gca().text(x, y - 5, class_name, color='white', fontsize=12, fontweight='bold', bbox=dict(facecolor='green', edgecolor='green', alpha=0.5))
     plt.axis('off')
@@ -174,7 +174,7 @@ def SAM_predictor(device):
     sam_predictor = SamPredictor(sam)
     return sam_predictor
 
-def SAM(im, boxes, class_idx, metadata, sam_predictor, image_save_path=None):
+def SAM(im, boxes, class_idx, metadata, sam_predictor):
     sam_predictor.set_image(im)
     input_boxes = torch.tensor(boxes, device=sam_predictor.device)
     transformed_boxes = sam_predictor.transform.apply_boxes_torch(input_boxes, im.shape[:2])
@@ -184,9 +184,6 @@ def SAM(im, boxes, class_idx, metadata, sam_predictor, image_save_path=None):
         boxes=transformed_boxes,
         multimask_output=False,
     )
-    if image_save_path is not None:
-        classes = [metadata.thing_classes[idx] for idx in class_idx]  # Get class names from indices
-        visualize_output(im, masks, input_boxes, classes, image_save_path)
     return masks
 
 
@@ -251,11 +248,6 @@ def main(args):
     # We are one directory up in Detic.
     image_path = os.path.join("..", args.image_path)
     
-    # Add "_segm" before the suffix.
-    image_save_path = image_path.split(".")
-    image_save_path[-2] += "_segm"
-    image_save_path = ".".join(image_save_path)
-    
     image = imread(image_path)
     image = np.array(image, dtype=np.uint8)
 
@@ -265,7 +257,16 @@ def main(args):
 
     boxes, class_idx = Detic(image, metadata, detic_predictor)
     assert len(boxes) > 0, "Zero detections."
-    masks = SAM(image, boxes, class_idx, metadata, sam_predictor, image_save_path)
+    masks = SAM(image, boxes, class_idx, metadata, sam_predictor)
+
+    # Save detections as a png.
+    # Add "_segm" before the suffix.
+    image_save_path = image_path.split(".")
+    image_save_path[-2] += "_segm"
+    image_save_path = ".".join(image_save_path)
+
+    classes = [metadata.thing_classes[idx] for idx in class_idx]
+    visualize_output(image, masks, boxes, classes, image_save_path)
 
 
 parser = argparse.ArgumentParser()
