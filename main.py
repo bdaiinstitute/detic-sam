@@ -268,6 +268,19 @@ def main(args):
     classes = [metadata.thing_classes[idx] for idx in class_idx]
     visualize_output(image, masks, boxes, classes, image_save_path)
 
+    # Save detections as a pickle.
+    pickle_save_path = image_path.split(".")
+    pickle_save_path[-2] += "_segm"
+    pickle_save_path[-1] = "pkl"
+    pickle_save_path = ".".join(pickle_save_path)
+
+    with open(pickle_save_path, "wb") as f:
+        pickle.dump({
+            "masks": masks.cpu().numpy(),
+            "boxes": boxes,  # y_min, x_min, y_max, x_max
+            "classes": classes
+        }, f)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("image_path", help="Input image path.")
