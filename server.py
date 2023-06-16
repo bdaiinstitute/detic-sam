@@ -1,21 +1,14 @@
-import argparse
-import json
+import io
 import os
-import pickle
-import random
-from typing import List, Dict, Tuple
 import sys
 
-import cv2
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-import matplotlib.colors as mcolors
-from mpl_toolkits.mplot3d import Axes3D
-import open3d as o3d
 from PIL import Image
-from skimage.io import imread
 import torch
+import numpy as np
+from flask import Flask, request, send_file
+import PIL
+from PIL import Image
 
 # Change the current working directory to 'Detic'
 os.chdir('Detic')
@@ -37,22 +30,13 @@ from detectron2.data import MetadataCatalog, DatasetCatalog
 
 # Detic libraries 
 from Detic.detic.modeling.text.text_encoder import build_text_encoder
-from collections import defaultdict
 from centernet.config import add_centernet_config
 from Detic.detic.config import add_detic_config
 from Detic.detic.modeling.utils import reset_cls_test
-from sklearn.cluster import DBSCAN
-import matplotlib.patches as patches
+
 # SAM libraries
 sys.path.append("..")
 from segment_anything import sam_model_registry, SamPredictor
-
-import io
-
-import numpy as np
-from flask import Flask, jsonify, request, send_file
-import PIL
-from PIL import Image
 
 DEVICE = "cuda:0"
 
