@@ -4,7 +4,7 @@ source venv/bin/activate
 
 # Install pip dependencies.
 pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
-pip install open3d scikit-image
+pip install open3d scikit-image Flask
 
 # Install Detectron2.
 python -m pip install 'git+https://github.com/facebookresearch/detectron2.git@v0.6'
