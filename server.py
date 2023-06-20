@@ -79,14 +79,15 @@ def custom_vocab(detic_predictor, classes):
         detic_predictor.model.roi_heads.box_predictor[cascade_stages].test_score_thresh = output_score_threshold
     return metadata
 
+
 def Detic(im, metadata, detic_predictor):
     if im is None:
         print("Error: Unable to read the image file")
 
     # Run model and show results
-    output =detic_predictor(im)
-    v = Visualizer(im[:, :, ::-1], metadata)
-    out = v.draw_instance_predictions(output["instances"].to('cpu'))
+    output =detic_predictor(im[:, :, ::-1])  # Detic expects BGR images.
+    # v = Visualizer(im[:, :, ::-1], metadata)
+    # out = v.draw_instance_predictions(output["instances"].to('cpu'))
     instances = output["instances"].to('cpu')
     boxes = instances.pred_boxes.tensor.numpy()
     classes = instances.pred_classes.numpy()

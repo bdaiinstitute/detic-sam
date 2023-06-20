@@ -14,7 +14,6 @@ import matplotlib.colors as mcolors
 from mpl_toolkits.mplot3d import Axes3D
 import open3d as o3d
 from PIL import Image
-from skimage.io import imread
 import torch
 
 # Change the current working directory to 'Detic'
@@ -47,7 +46,7 @@ import matplotlib.patches as patches
 sys.path.append("..")
 from segment_anything import sam_model_registry, SamPredictor
 
-# %%
+
 def DETIC_predictor():
     # Build the detector and download our pretrained weights
     cfg = get_cfg()
@@ -63,7 +62,7 @@ def DETIC_predictor():
 
     return detic_predictor
 
-# %%
+
 def default_vocab():
     detic_predictor = DETIC_predictor()
     # Setup the model's vocabulary using build-in datasets
@@ -95,11 +94,13 @@ def get_clip_embeddings(vocabulary, prompt='a '):
     emb = text_encoder(texts).detach().permute(1, 0).contiguous().cpu()
     return emb
 
+
 def visualize_detic(output):
-    output_im = cv2.cvtColot(output.get_image()[:, :, ::-1], cv2.COLOR_BGR2RGB)
+    output_im = output.get_image()[:, :, ::-1]
     cv2.imshow("Detic Predictions", output_im)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
 
 def custom_vocab(detic_predictor, classes):
     vocabulary = 'custom'
@@ -115,13 +116,14 @@ def custom_vocab(detic_predictor, classes):
         detic_predictor.model.roi_heads.box_predictor[cascade_stages].test_score_thresh = output_score_threshold
     return metadata
 
+
 def Detic(im, metadata, detic_predictor, visualize=False):
     if im is None:
         print("Error: Unable to read the image file")
 
     # Run model and show results
-    output =detic_predictor(im)
-    v = Visualizer(im[:, :, ::-1], metadata)
+    output =detic_predictor(im[:, :, ::-1])  # Detic expects BGR images.
+    v = Visualizer(im, metadata)
     out = v.draw_instance_predictions(output["instances"].to('cpu'))
     instances = output["instances"].to('cpu')
     boxes = instances.pred_boxes.tensor.numpy()
@@ -130,7 +132,7 @@ def Detic(im, metadata, detic_predictor, visualize=False):
         visualize_detic(out)
     return boxes, classes
 
-# %%
+
 def show_mask(mask, ax, random_color=False):
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
@@ -140,18 +142,13 @@ def show_mask(mask, ax, random_color=False):
     mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
     ax.imshow(mask_image)
     
-def show_points(coords, labels, ax, marker_size=375):
-    pos_points = coords[labels==1]
-    neg_points = coords[labels==0]
-    ax.scatter(pos_points[:, 0], pos_points[:, 1], color='green', marker='*', s=marker_size, edgecolor='white', linewidth=1.25)
-    ax.scatter(neg_points[:, 0], neg_points[:, 1], color='red', marker='*', s=marker_size, edgecolor='white', linewidth=1.25)   
-    
+
 def show_box(box, ax):
     x0, y0 = box[0], box[1]
     w, h = box[2] - box[0], box[3] - box[1]
     ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))    
 
-# %%
+
 def visualize_output(im, masks, input_boxes, classes, image_save_path):
     plt.figure(figsize=(10, 10))
     plt.imshow(im)
@@ -165,6 +162,7 @@ def visualize_output(im, masks, input_boxes, classes, image_save_path):
     plt.savefig(image_save_path)
     #plt.show()
 
+
 def SAM_predictor(device):
     sam_checkpoint = "../sam_vit_h_4b8939.pth"
     model_type = "vit_h"
@@ -173,6 +171,7 @@ def SAM_predictor(device):
     sam.to(device=device)
     sam_predictor = SamPredictor(sam)
     return sam_predictor
+
 
 def SAM(im, boxes, class_idx, metadata, sam_predictor):
     sam_predictor.set_image(im)
@@ -194,53 +193,6 @@ def generate_colors(num_colors):
         hsv_colors.append((hue, 1.0, 1.0))
 
     return [mcolors.hsv_to_rgb(color) for color in hsv_colors]
-def filter_ground_plane(points, z_threshold):
-    mask = points[:, 2] > z_threshold
-    points_no_ground = points[mask]
-    return points_no_ground
-
-
-def visualize_segmented_point_cloud(points, segments):
-    if len(segments) == 0:
-        return
-
-    ax = plt.gca()
-    ax.set_autoscale_on(False)
-    colors = generate_colors(len(segments))
-    z_threshold = -0.04966512
-    ## Uncomment the below 3 lines for Lab collected data to remove the ground plane
-    # points_no_ground = filter_ground_plane(points, z_threshold)
-    # h,w = points.shape
-    # ground_mask = (points[:, 2] > z_threshold).reshape(h, w)[:,:]
-
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points) # Pass the points_no_ground here for lab collected data
-    pcd.colors = o3d.utility.Vector3dVector(colors)
-
-    segment_pcds = []
-    for idx, mask in enumerate(segments):
-        segmentation_mask = mask.cpu().numpy()
-        # updated_segmentation_mask = segmentation_mask[ground_mask]
-        segment_indices = np.where(segmentation_mask.ravel())[0].tolist()
-        segment_pcd = pcd.select_by_index(segment_indices)
-        segment_pcd.paint_uniform_color(colors[idx])
-        segment_pcds.append(segment_pcd)
-
-    # Create a coordinate frame (scale)
-    # coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1.0, origin=[0, 0, 0])
-
-    # Add the coordinate frame to the geometries to be visualized 
-    o3d.visualization.draw_geometries(segment_pcds)
-
-def combine_point_clouds(clouds):
-    combined_cloud = np.concatenate(clouds, axis=0)
-    return combined_cloud
-
-def combine_masks(masks_list):
-    combined_masks = []
-    for masks in masks_list:
-        combined_masks.extend(masks)
-    return combined_masks
 
 
 def main(args):
@@ -248,7 +200,7 @@ def main(args):
     # We are one directory up in Detic.
     image_path = os.path.join("..", args.image_path)
     
-    image = imread(image_path)
+    image = Image.open(image_path)
     image = np.array(image, dtype=np.uint8)
 
     detic_predictor = DETIC_predictor()
