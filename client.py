@@ -4,7 +4,27 @@ import requests
 import time
 
 import numpy as np
+import matplotlib.pyplot as plt
 from PIL import Image
+
+
+def ask_sam(image, classes):
+    buf = image_to_bytes(image)
+    r = requests.post("http://localhost:5550/predict",
+                      files={"file": buf},
+                      data={"classes": ",".join(classes)}
+                     )
+
+    if r.status_code != 200:
+        assert False, r.content
+
+    with io.BytesIO(r.content) as f:
+        arr = np.load(f, allow_pickle=True)
+        boxes = arr['boxes']
+        classes = arr['classes']
+        masks = arr['masks']
+
+    return dict(boxes=boxes, classes=classes, masks=masks)
 
 
 def image_to_bytes(img):
@@ -15,21 +35,40 @@ def image_to_bytes(img):
     return buf
 
 
+def visualize_output(im, masks, input_boxes, classes):
+    plt.figure(figsize=(10, 10))
+    plt.imshow(im)
+    for mask in masks:
+        show_mask(mask, plt.gca(), random_color=True)
+    for box, class_name in zip(input_boxes, classes):
+        show_box(box, plt.gca())
+        x, y = box[:2]
+        plt.gca().text(x, y - 5, class_name, color='white', fontsize=12, fontweight='bold', bbox=dict(facecolor='green', edgecolor='green', alpha=0.5))
+    plt.axis('off')
+    plt.show()
+
+
+def show_mask(mask, ax, random_color=False):
+    if random_color:
+        color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
+    else:
+        color = np.array([30/255, 144/255, 255/255, 0.6])
+    h, w = mask.shape[-2:]
+    mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
+    ax.imshow(mask_image)
+    
+
+def show_box(box, ax):
+    x0, y0 = box[0], box[1]
+    w, h = box[2] - box[0], box[3] - box[1]
+    ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))    
+
+
 def main(args):
     
     image = Image.open(args.image_path)
-    buf = image_to_bytes(image)
-
-    t1 = time.time()
-    r = requests.post("http://localhost:5550/predict", files={"file": buf}, data={"classes": ",".join(args.classes)})
-    print("Duration:", time.time() - t1)
-    
-    if r.status_code == 200:
-        with io.BytesIO(r.content) as f:
-            arr = np.load(f)
-            print(arr["classes"])
-    else:
-        print(r.content)
+    d = ask_sam(image, args.classes)
+    visualize_output(image, d["masks"], d["boxes"], d["classes"])
 
 
 parser = argparse.ArgumentParser()

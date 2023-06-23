@@ -67,20 +67,17 @@ def get_clip_embeddings(vocabulary, prompt='a '):
 
 
 def custom_vocab(detic_predictor, classes):
-    metadata = MetadataCatalog.get("__unused2")
-    metadata.thing_classes = classes # Change here to try your own vocabularies!
-    classifier = get_clip_embeddings(metadata.thing_classes)
-    num_classes = len(metadata.thing_classes)
+    classifier = get_clip_embeddings(classes)
+    num_classes = len(classes)
     reset_cls_test(detic_predictor.model, classifier, num_classes)
 
     # Reset visualization threshold
     output_score_threshold = 0.3
     for cascade_stages in range(len(detic_predictor.model.roi_heads.box_predictor)):
         detic_predictor.model.roi_heads.box_predictor[cascade_stages].test_score_thresh = output_score_threshold
-    return metadata
 
 
-def Detic(im, metadata, detic_predictor):
+def Detic(im, detic_predictor):
     if im is None:
         print("Error: Unable to read the image file")
 
@@ -104,7 +101,7 @@ def SAM_predictor(device):
     return sam_predictor
 
 
-def SAM(im, boxes, class_idx, metadata, sam_predictor):
+def SAM(im, boxes, sam_predictor):
     sam_predictor.set_image(im)
     input_boxes = torch.tensor(boxes, device=sam_predictor.device)
     transformed_boxes = sam_predictor.transform.apply_boxes_torch(input_boxes, im.shape[:2])
@@ -154,15 +151,15 @@ def predict():
         classes = classes.split(",")
 
         # Make a prediction.
-        metadata = custom_vocab(detic_predictor, classes)
+        custom_vocab(detic_predictor, classes)
 
-        boxes, class_idx = Detic(image, metadata, detic_predictor)
+        boxes, class_idx = Detic(image, detic_predictor)
         if len(boxes) == 0:
             return "Did not find any objects.", 400
-        masks = SAM(image, boxes, class_idx, metadata, sam_predictor)
+        masks = SAM(image, boxes, sam_predictor)
         masks = masks.cpu().numpy()
 
-        classes = [metadata.thing_classes[idx] for idx in class_idx]
+        classes = [classes[idx] for idx in class_idx]
 
         # Send result.
         buf = io.BytesIO()
