@@ -88,7 +88,8 @@ def Detic(im, detic_predictor):
     instances = output["instances"].to('cpu')
     boxes = instances.pred_boxes.tensor.numpy()
     classes = instances.pred_classes.numpy()
-    return boxes, classes
+    scores = instances.scores.numpy()
+    return boxes, classes, scores
 
 
 def SAM_predictor(device):
@@ -153,7 +154,7 @@ def predict():
         # Make a prediction.
         custom_vocab(detic_predictor, classes)
 
-        boxes, class_idx = Detic(image, detic_predictor)
+        boxes, class_idx, scores = Detic(image, detic_predictor)
         if len(boxes) == 0:
             return "Did not find any objects.", 400
         masks = SAM(image, boxes, sam_predictor)
@@ -163,7 +164,7 @@ def predict():
 
         # Send result.
         buf = io.BytesIO()
-        np.savez(buf, masks=masks, boxes=boxes, classes=classes)
+        np.savez(buf, masks=masks, boxes=boxes, classes=classes, scores=scores)
         buf.seek(0)
         return send_file(buf, mimetype="numpy", as_attachment=True, download_name="result.npy")
 
