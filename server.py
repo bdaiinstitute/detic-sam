@@ -170,45 +170,60 @@ def predict():
 
 @app.route("/batch_predict", methods=["POST"])
 def batch_predict():
+    """Given a batch of images, runs the detector on all of these
+    and returns the result.
+    
+    This method expects the request to be in the form of a dictionary
+    whose keys are strings corresponding to the camera names, and whose
+    values are numpy arrays corresponding to the RGB image taken from this
+    camera.
+    
+    This method primarily exists to support speedy inference for the SeSaMe
+    planning system (https://github.com/bdaiinstitute/predicators), but more
+    generally hsould supposrt a perception pipeline that's part of some
+    broader planning system."""
+
     if request.method == "POST":
+        # Get a list of classes.
+        classes = request.form.get("classes")
+        if classes is None:
+            return "No classes specified.", 400
+        classes = classes.split(",")
+        # Make a prediction.
+        # TODO: consider caching this as long as the classes
+        # are the same!
+        custom_vocab(detic_predictor, classes)
         results_dict = {}
+        for camera_name in request.files.keys():
+            results_dict[camera_name + "_masks"] = masks
+            results_dict[camera_name + "_boxes"] = masks
+            results_dict[camera_name + "_classes"] = masks
+            results_dict[camera_name + "_scores"] = masks
         # Read the received images, which are each associated
-        # with a different key.
-        # TODO: test how to access all the different files!
-
-        import ipdb; ipdb.set_trace()
-
-        for img_file in request.files:
-            files = request.files["files"]
-
-            img_bytes = files.read()
+        # with a different key corresponding to the name of
+        # the camera the image was taken from.
+        for camera_name, img_file in request.files.items():
+            img_bytes = img_file.read()
             try:
                 image = read_image(img_bytes)
             except (PIL.UnidentifiedImageError, ValueError) as e:
-                # Return an error.
-                print(str(e))
-                return str(e), 400
-
-            # Get a list of classes.
-            classes = request.form.get("classes")
-            if classes is None:
-                return "No classes specified.", 400
-            classes = classes.split(",")
-
-            # Make a prediction.
-            custom_vocab(detic_predictor, classes)
-
+                print(f"Error with image from camera {camera_name}: {e}")
+                continue
+            # Query Detic with this particular image and get the output.
             boxes, class_idx, scores = Detic(image, detic_predictor)
             if len(boxes) == 0:
-                return "Did not find any objects.", 400
+                continue
             masks = SAM(image, boxes, sam_predictor)
             masks = masks.cpu().numpy()
-
             classes = [classes[idx] for idx in class_idx]
+            results_dict[camera_name + "_masks"] = masks
+            results_dict[camera_name + "_boxes"] = boxes
+            results_dict[camera_name + "_classes"] = classes
+            results_dict[camera_name + "_scores"] = scores
 
         # Send result.
         buf = io.BytesIO()
-        np.savez(buf, masks=masks, boxes=boxes, classes=classes, scores=scores)
+        np.savez(buf, **results_dict)
         buf.seek(0)
         return send_file(buf, mimetype="numpy", as_attachment=True, download_name="result.npy")
 
