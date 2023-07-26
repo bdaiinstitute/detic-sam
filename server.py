@@ -116,7 +116,6 @@ def SAM(im, boxes, sam_predictor):
 
 
 def read_image(img_bytes):
-
     img = Image.open(io.BytesIO(img_bytes))
     img = np.array(img)
     if len(img.shape) < 3 or img.shape[2] != 3:
@@ -168,6 +167,50 @@ def predict():
         buf.seek(0)
         return send_file(buf, mimetype="numpy", as_attachment=True, download_name="result.npy")
 
+
+@app.route("/batch_predict", methods=["POST"])
+def batch_predict():
+    if request.method == "POST":
+        results_dict = {}
+        # Read the received images, which are each associated
+        # with a different key.
+        # TODO: test how to access all the different files!
+
+        import ipdb; ipdb.set_trace()
+
+        for img_file in request.files:
+            files = request.files["files"]
+
+            img_bytes = files.read()
+            try:
+                image = read_image(img_bytes)
+            except (PIL.UnidentifiedImageError, ValueError) as e:
+                # Return an error.
+                print(str(e))
+                return str(e), 400
+
+            # Get a list of classes.
+            classes = request.form.get("classes")
+            if classes is None:
+                return "No classes specified.", 400
+            classes = classes.split(",")
+
+            # Make a prediction.
+            custom_vocab(detic_predictor, classes)
+
+            boxes, class_idx, scores = Detic(image, detic_predictor)
+            if len(boxes) == 0:
+                return "Did not find any objects.", 400
+            masks = SAM(image, boxes, sam_predictor)
+            masks = masks.cpu().numpy()
+
+            classes = [classes[idx] for idx in class_idx]
+
+        # Send result.
+        buf = io.BytesIO()
+        np.savez(buf, masks=masks, boxes=boxes, classes=classes, scores=scores)
+        buf.seek(0)
+        return send_file(buf, mimetype="numpy", as_attachment=True, download_name="result.npy")
 
 if __name__ == '__main__':
     app.run(port=5550)
