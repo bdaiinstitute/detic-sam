@@ -215,13 +215,10 @@ def batch_predict():
                 continue
             masks = SAM(image, boxes, sam_predictor)
             masks = masks.cpu().numpy()
-            try:
-                classes = [classes[idx] for idx in class_idx]
-            except IndexError:
-                import ipdb; ipdb.set_trace()
+            curr_classes = [classes[idx] for idx in class_idx]
             results_dict[camera_name + "_masks"] = masks
             results_dict[camera_name + "_boxes"] = boxes
-            results_dict[camera_name + "_classes"] = classes
+            results_dict[camera_name + "_classes"] = curr_classes
             results_dict[camera_name + "_scores"] = scores
 
         # Send result.
