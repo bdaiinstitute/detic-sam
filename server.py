@@ -195,10 +195,10 @@ def batch_predict():
         custom_vocab(detic_predictor, classes)
         results_dict = {}
         for camera_name in request.files.keys():
-            results_dict[camera_name + "_masks"] = masks
-            results_dict[camera_name + "_boxes"] = masks
-            results_dict[camera_name + "_classes"] = masks
-            results_dict[camera_name + "_scores"] = masks
+            results_dict[camera_name + "_masks"] = np.empty(shape=(0, 0))
+            results_dict[camera_name + "_boxes"] = np.empty(shape=(0, 0))
+            results_dict[camera_name + "_classes"] = np.empty(shape=(0, 0))
+            results_dict[camera_name + "_scores"] = np.empty(shape=(0, 0))
         # Read the received images, which are each associated
         # with a different key corresponding to the name of
         # the camera the image was taken from.
