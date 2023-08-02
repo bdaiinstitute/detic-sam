@@ -9,6 +9,9 @@ This repo uses [Detic](https://github.com/facebookresearch/Detic) to detect obje
 
 ## Setup
 
+First add the following to your bash profile:
+`export CUDA_PATH=/usr/local/cuda-11.7/`
+
 Either run `./setup.sh` or follow the steps manually.
 
 ## Usage
