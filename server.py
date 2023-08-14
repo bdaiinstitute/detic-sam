@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import sys
 
@@ -51,7 +52,8 @@ def DETIC_predictor():
     add_detic_config(cfg)
     cfg.merge_from_file("configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml")
     cfg.MODEL.WEIGHTS = 'https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth'
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.3 # set threshold for this model
+    # cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.3 # set threshold for this model
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.6 # set threshold for this model
     cfg.MODEL.ROI_BOX_HEAD.ZEROSHOT_WEIGHT_PATH = 'rand'
     cfg.MODEL.ROI_HEADS.ONE_CLASS_PER_PROPOSAL = True # For better visualization purpose. Set to False for all classes.
     # cfg.MODEL.DEVICE='cpu' # uncomment this to use cpu-only mode.
@@ -72,7 +74,8 @@ def custom_vocab(detic_predictor, classes):
     reset_cls_test(detic_predictor.model, classifier, num_classes)
 
     # Reset visualization threshold
-    output_score_threshold = 0.3
+    # output_score_threshold = 0.3
+    output_score_threshold = 0.6
     for cascade_stages in range(len(detic_predictor.model.roi_heads.box_predictor)):
         detic_predictor.model.roi_heads.box_predictor[cascade_stages].test_score_thresh = output_score_threshold
 
@@ -83,12 +86,18 @@ def Detic(im, detic_predictor):
 
     # Run model and show results
     output =detic_predictor(im[:, :, ::-1])  # Detic expects BGR images.
+
+    print('output', output.keys())
+    logging.warning(f'output:{output.keys()}')
+    # TODO add confidence scores
+
     # v = Visualizer(im[:, :, ::-1], metadata)
     # out = v.draw_instance_predictions(output["instances"].to('cpu'))
     instances = output["instances"].to('cpu')
     boxes = instances.pred_boxes.tensor.numpy()
     classes = instances.pred_classes.numpy()
-    return boxes, classes
+    scores = instances.scores.numpy()
+    return boxes, classes, scores
 
 
 def SAM_predictor(device):
@@ -153,7 +162,7 @@ def predict():
         # Make a prediction.
         custom_vocab(detic_predictor, classes)
 
-        boxes, class_idx = Detic(image, detic_predictor)
+        boxes, class_idx, scores = Detic(image, detic_predictor)
         if len(boxes) == 0:
             return "Did not find any objects.", 400
         masks = SAM(image, boxes, sam_predictor)
@@ -163,7 +172,7 @@ def predict():
 
         # Send result.
         buf = io.BytesIO()
-        np.savez(buf, masks=masks, boxes=boxes, classes=classes)
+        np.savez(buf, masks=masks, boxes=boxes, classes=classes, scores=scores)
         buf.seek(0)
         return send_file(buf, mimetype="numpy", as_attachment=True, download_name="result.npy")
 
