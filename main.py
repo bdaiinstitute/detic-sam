@@ -151,15 +151,16 @@ def show_box(box, ax):
     ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))    
 
 
-def visualize_output(im, masks, input_boxes, classes, image_save_path):
+def visualize_output(im, masks, input_boxes, classes, image_save_path, mask_only=False):
     plt.figure(figsize=(10, 10))
     plt.imshow(im)
     for mask in masks:
         show_mask(mask.cpu().numpy(), plt.gca(), random_color=True)
-    for box, class_name in zip(input_boxes, classes):
-        show_box(box, plt.gca())
-        x, y = box[:2]
-        plt.gca().text(x, y - 5, class_name, color='white', fontsize=12, fontweight='bold', bbox=dict(facecolor='green', edgecolor='green', alpha=0.5))
+    if not mask_only:
+        for box, class_name in zip(input_boxes, classes):
+            show_box(box, plt.gca())
+            x, y = box[:2]
+            plt.gca().text(x, y - 5, class_name, color='white', fontsize=12, fontweight='bold', bbox=dict(facecolor='green', edgecolor='green', alpha=0.5))
     plt.axis('off')
     plt.savefig(image_save_path)
     #plt.show()
@@ -214,13 +215,20 @@ def main(args):
     masks = SAM(image, boxes, class_idx, metadata, sam_predictor)
 
     # Save detections as a png.
+    # Add "_bbox" before the suffix.
+    image_save_path = image_path.split(".")
+    image_save_path[-2] += "_bbox"
+    image_save_path = ".".join(image_save_path)
+    classes = [metadata.thing_classes[idx] for idx in class_idx]
+    visualize_output(image, masks, boxes, classes, image_save_path)
+
+    # Save only segmentation without bounding box as a separate image.
     # Add "_segm" before the suffix.
     image_save_path = image_path.split(".")
     image_save_path[-2] += "_segm"
     image_save_path = ".".join(image_save_path)
-
     classes = [metadata.thing_classes[idx] for idx in class_idx]
-    visualize_output(image, masks, boxes, classes, image_save_path)
+    visualize_output(image, masks, boxes, classes, image_save_path, mask_only=True)
 
     # Save detections as a pickle.
     pickle_save_path = image_path.split(".")
