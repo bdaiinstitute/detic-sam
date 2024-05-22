@@ -24,6 +24,13 @@ python main.py 2.png -c screwdriver "scrubbing brush" -d "cuda:0"
 ```
 
 ## Troubleshooting
+### Installation
+- Cannot install detectron2 due to torch being compiled with a different CUDA version.
+  If there's an installation issue with detectron2, it's probably because you compiled and installed torch
+  using a different version of CUDA than what you used to install detectron2.
+  Find the appropriate torch installation [here](https://pytorch.org/get-started/previous-versions/) and this installation issue should go away.
+
+### General Usage Issues
 - `PIL.Image.LINEAR` doesn't exist.
   If you see something like the below when trying to run `server.py`:
   ```
