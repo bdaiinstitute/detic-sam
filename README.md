@@ -9,10 +9,12 @@ This repo uses [Detic](https://github.com/facebookresearch/Detic) to detect obje
 
 ## Setup
 
-First add the following to your bash profile:
+First add the following to your bash profile (assuming you have CUDA 11+):
 `export CUDA_PATH=/usr/local/cuda-11.7/`
 
-Either run `./setup.sh` or follow the steps manually.
+Next, be sure to use `python 3.8`. If you have a higher version of python, then install 3.8 and use this.
+
+Either run `./setup.sh` (make sure the `python` command uses python 3.8 in this case!) or follow the steps manually.
 
 ## Usage
 
@@ -24,13 +26,11 @@ python main.py 2.png -c screwdriver "scrubbing brush" -d "cuda:0"
 ```
 
 ## Troubleshooting
-### Installation
-- Cannot install detectron2 due to torch being compiled with a different CUDA version.
-  If there's an installation issue with detectron2, it's probably because you compiled and installed torch
-  using a different version of CUDA than what you used to install detectron2.
-  Find the appropriate torch installation [here](https://pytorch.org/get-started/previous-versions/) and this installation issue should go away.
-
-### General Usage Issues
+- Segmentation Fault (core dumped) as soon as you run `server.py`
+  This stems from an issue with the detectron2 installation. Torch and detectron2 are closely linked: you need to make
+  sure you've installed the torch version with the right CUDA extension corresponding to the detectron2 version (as well
+  as your own system setup). Find the correct detectron2 installation command [here](https://detectron2.readthedocs.io/en/latest/tutorials/install.html).
+  Then, find the corresponding torch version compatible withthat and make sure you have that.
 - `PIL.Image.LINEAR` doesn't exist.
   If you see something like the below when trying to run `server.py`:
   ```
